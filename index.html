@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeroTier Camera Monitor</title>
+    <!-- Tailwind CSS สำหรับจัดสไตล์ -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- hls.js สำหรับเล่นไฟล์ .m3u8 -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- FontAwesome สำหรับไอคอน -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <!-- Header & Control Bar -->
+    <header class="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-6">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-bold text-sky-400 flex items-center gap-3">
+                <i class="fa-solid fa-video text-sky-400"></i> ZeroTier CCTV Dashboard
+            </h1>
+        </div>
+        <button onclick="openAddModal()" class="bg-sky-500 hover:bg-sky-600 text-white px-5 py-2.5 rounded-lg flex items-center justify-center gap-2 transition font-medium shadow-lg shadow-sky-500/20">
+            <i class="fa-solid fa-plus"></i> เพิ่มกล้องใหม่
+        </button>
+    </header>
+
+    <!-- Camera Grid Display -->
+    <main class="max-w-7xl mx-auto">
+        <div id="cameraGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- รายการกล้องจะถูกสร้างขึ้นมาแสดงตรงนี้ผ่าน JavaScript -->
+        </div>
+    </main>
+
+    <!-- Modal Form สำหรับเพิ่ม / แก้ไขกล้อง -->
+    <div id="addModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-5 border-b border-slate-700 pb-3">
+                <h3 id="modalTitle" class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-camera text-sky-400"></i> เพิ่มกล้องวงจรปิด
+                </h3>
+                <button onclick="toggleModal(false)" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form id="cameraForm" onsubmit="saveCamera(event)" class="space-y-4">
+                <input type="hidden" id="camId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">ชื่อกล้อง / ตำแหน่ง</label>
+                    <input type="text" id="camName" placeholder="เช่น กล้องหน้าบ้าน 1" required 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">ZeroTier IP</label>
+                    <input type="text" id="camServerIp" placeholder="เช่น 10.147.17.215" required 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Port</label>
+                    <input type="text" id="camPort" value="1984" required 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">ชื่อ Stream (`src` parameter)</label>
+                    <input type="text" id="camStreamName" placeholder="เช่น tapo_cam หรือ house2_cam1" required 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+                </div>
+
+                <div class="pt-3 flex justify-end gap-3">
+                    <button type="button" onclick="toggleModal(false)" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white">ยกเลิก</button>
+                    <button type="submit" class="bg-sky-500 hover:bg-sky-600 text-white px-5 py-2 rounded-lg text-sm font-medium transition">บันทึกกล้อง</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script ควบคุมการทำงาน -->
+    <script>
+        // กำหนดรหัสผ่านสำหรับการลบกล้อง
+        const DELETE_PASSWORD = "admin2";
+
+        // โหลดข้อมูลกล้องเริ่มต้นจาก LocalStorage
+        let cameras = JSON.parse(localStorage.getItem('zt_cameras')) || [
+            {
+                id: Date.now(),
+                name: "กล้อง Tapo หลัก",
+                serverIp: "10.147.17.215",
+                port: "1984",
+                streamName: "tapo_cam"
+            }
+        ];
+
+        const hlsInstances = {};
+
+        function toggleModal(show) {
+            const modal = document.getElementById('addModal');
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        function openAddModal() {
+            document.getElementById('cameraForm').reset();
+            document.getElementById('camId').value = "";
+            document.getElementById('camPort').value = "1984";
+            document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-camera text-sky-400"></i> เพิ่มกล้องวงจรปิด';
+            toggleModal(true);
+        }
+
+        function editCamera(id) {
+            const cam = cameras.find(c => c.id === id);
+            if (!cam) return;
+
+            document.getElementById('camId').value = cam.id;
+            document.getElementById('camName').value = cam.name;
+            document.getElementById('camServerIp').value = cam.serverIp;
+            document.getElementById('camPort').value = cam.port;
+            document.getElementById('camStreamName').value = cam.streamName;
+
+            document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-sky-400"></i> แก้ไขข้อมูลกล้อง';
+            toggleModal(true);
+        }
+
+        function saveCamera(e) {
+            e.preventDefault();
+            const editId = document.getElementById('camId').value;
+            
+            const camData = {
+                name: document.getElementById('camName').value,
+                serverIp: document.getElementById('camServerIp').value.trim(),
+                port: document.getElementById('camPort').value.trim(),
+                streamName: document.getElementById('camStreamName').value.trim()
+            };
+
+            if (editId) {
+                // อัปเดตข้อมูลกล้องเดิม
+                const idNum = parseInt(editId);
+                const index = cameras.findIndex(c => c.id === idNum);
+                if (index !== -1) {
+                    if (hlsInstances[idNum]) {
+                        hlsInstances[idNum].destroy();
+                        delete hlsInstances[idNum];
+                    }
+                    cameras[index] = { id: idNum, ...camData };
+                }
+            } else {
+                // เพิ่มกล้องใหม่
+                const newCam = { id: Date.now(), ...camData };
+                cameras.push(newCam);
+            }
+
+            localStorage.setItem('zt_cameras', JSON.stringify(cameras));
+            toggleModal(false);
+            renderCameras();
+        }
+
+        function deleteCamera(id) {
+            const password = prompt("กรุณาใส่รหัสผ่านเพื่อยืนยันการลบกล้อง:");
+            
+            if (password === null) return; // กดยกเลิก
+            
+            if (password === DELETE_PASSWORD) {
+                if (hlsInstances[id]) {
+                    hlsInstances[id].destroy();
+                    delete hlsInstances[id];
+                }
+                cameras = cameras.filter(cam => cam.id !== id);
+                localStorage.setItem('zt_cameras', JSON.stringify(cameras));
+                renderCameras();
+            } else {
+                alert("รหัสผ่านไม่ถูกต้อง! ไม่สามารถลบกล้องได้");
+            }
+        }
+
+        function renderCameras() {
+            const grid = document.getElementById('cameraGrid');
+            grid.innerHTML = '';
+
+            if (cameras.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-16 border-2 border-dashed border-slate-800 rounded-xl text-slate-500">
+                        <i class="fa-solid fa-video-slash text-4xl mb-3"></i>
+                        <p>ยังไม่มีรายการกล้อง กดปุ่ม "เพิ่มกล้องใหม่" เพื่อเริ่มตั้งค่า</p>
+                    </div>
+                `;
+                return;
+            }
+
+            cameras.forEach(cam => {
+                const streamUrl = `http://${cam.serverIp}:${cam.port}/api/stream.m3u8?src=${cam.streamName}&mp4`;
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-800 border border-slate-700/80 rounded-xl overflow-hidden shadow-xl flex flex-col";
+                card.innerHTML = `
+                    <div class="p-3 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+                        <div class="truncate">
+                            <h2 class="font-semibold text-white text-sm truncate">${cam.name}</h2>
+                            <p class="text-xs text-slate-400 font-mono">${cam.serverIp} (${cam.streamName})</p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="editCamera(${cam.id})" class="text-slate-400 hover:text-amber-400 p-1.5 rounded transition" title="แก้ไขกล้อง">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deleteCamera(${cam.id})" class="text-slate-400 hover:text-rose-400 p-1.5 rounded transition" title="ลบกล้อง">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="relative bg-black aspect-video flex items-center justify-center">
+                        <video id="video-${cam.id}" class="w-full h-full object-contain" controls autoplay muted playsinline></video>
+                    </div>
+                `;
+                grid.appendChild(card);
+
+                // โหลดวิดีโอเข้า Player
+                setTimeout(() => initPlayer(cam.id, streamUrl), 100);
+            });
+        }
+
+        function initPlayer(id, url) {
+            const video = document.getElementById(`video-${id}`);
+            if (!video) return;
+
+            if (Hls.isSupported()) {
+                const hls = new Hls({ manifestLoadingTimeOut: 8000 });
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+                hlsInstances[id] = hls;
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.addEventListener('loadedmetadata', () => video.play().catch(() => {}));
+            }
+        }
+
+        // โหลดรายการกล้องครั้งแรกเมื่อเปิดหน้าเว็บ
+        renderCameras();
+    </script>
+</body>
+</html>
