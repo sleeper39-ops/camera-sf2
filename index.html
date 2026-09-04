@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZeroTier Camera Monitor</title>
-    <!-- Tailwind CSS สำหรับจัดสไตล์ -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- hls.js สำหรับเล่นไฟล์ .m3u8 -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <!-- FontAwesome สำหรับไอคอน -->
+    <!-- FontAwesome ไอคอน -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background-color: #0f172a; color: #f8fafc; }
@@ -66,7 +64,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1">ชื่อ Stream (`src` parameter)</label>
-                    <input type="text" id="camStreamName" placeholder="เช่น tapo_cam หรือ house2_cam1" required 
+                    <input type="text" id="camStreamName" placeholder="เช่น tapo_cam1 หรือ tapo_cam2" required 
                         class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
                 </div>
 
@@ -80,21 +78,25 @@
 
     <!-- Script ควบคุมการทำงาน -->
     <script>
-        // กำหนดรหัสผ่านสำหรับการลบกล้อง
         const DELETE_PASSWORD = "admin2";
 
-        // โหลดข้อมูลกล้องเริ่มต้นจาก LocalStorage
+        // กำหนดรายการกล้องเริ่มต้นด้วย IP ZeroTier
         let cameras = JSON.parse(localStorage.getItem('zt_cameras')) || [
             {
-                id: Date.now(),
-                name: "กล้อง Tapo หลัก",
+                id: 1,
+                name: "กล้อง Tapo 1",
                 serverIp: "10.147.17.215",
                 port: "1984",
-                streamName: "tapo_cam"
+                streamName: "tapo_cam1"
+            },
+            {
+                id: 2,
+                name: "กล้อง Tapo 2",
+                serverIp: "10.147.17.215",
+                port: "1984",
+                streamName: "tapo_cam2"
             }
         ];
-
-        const hlsInstances = {};
 
         function toggleModal(show) {
             const modal = document.getElementById('addModal');
@@ -106,6 +108,7 @@
             document.getElementById('cameraForm').reset();
             document.getElementById('camId').value = "";
             document.getElementById('camPort').value = "1984";
+            document.getElementById('camServerIp').value = "10.147.17.215";
             document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-camera text-sky-400"></i> เพิ่มกล้องวงจรปิด';
             toggleModal(true);
         }
@@ -136,18 +139,12 @@
             };
 
             if (editId) {
-                // อัปเดตข้อมูลกล้องเดิม
                 const idNum = parseInt(editId);
                 const index = cameras.findIndex(c => c.id === idNum);
                 if (index !== -1) {
-                    if (hlsInstances[idNum]) {
-                        hlsInstances[idNum].destroy();
-                        delete hlsInstances[idNum];
-                    }
                     cameras[index] = { id: idNum, ...camData };
                 }
             } else {
-                // เพิ่มกล้องใหม่
                 const newCam = { id: Date.now(), ...camData };
                 cameras.push(newCam);
             }
@@ -160,13 +157,9 @@
         function deleteCamera(id) {
             const password = prompt("กรุณาใส่รหัสผ่านเพื่อยืนยันการลบกล้อง:");
             
-            if (password === null) return; // กดยกเลิก
+            if (password === null) return;
             
             if (password === DELETE_PASSWORD) {
-                if (hlsInstances[id]) {
-                    hlsInstances[id].destroy();
-                    delete hlsInstances[id];
-                }
                 cameras = cameras.filter(cam => cam.id !== id);
                 localStorage.setItem('zt_cameras', JSON.stringify(cameras));
                 renderCameras();
@@ -190,7 +183,8 @@
             }
 
             cameras.forEach(cam => {
-                const streamUrl = `http://${cam.serverIp}:${cam.port}/api/stream.m3u8?src=${cam.streamName}&mp4`;
+                // เปลี่ยนรูปแบบการดึงภาพเป็น WebRTC Player ผ่าน stream.html ของ go2rtc
+                const streamUrl = `http://${cam.serverIp}:${cam.port}/stream.html?src=${cam.streamName}&mode=webrtc`;
 
                 const card = document.createElement('div');
                 card.className = "bg-slate-800 border border-slate-700/80 rounded-xl overflow-hidden shadow-xl flex flex-col";
@@ -210,33 +204,19 @@
                         </div>
                     </div>
                     <div class="relative bg-black aspect-video flex items-center justify-center">
-                        <video id="video-${cam.id}" class="w-full h-full object-contain" controls autoplay muted playsinline></video>
+                        <iframe 
+                            src="${streamUrl}" 
+                            class="w-full h-full border-0" 
+                            allow="autoplay; fullscreen" 
+                            allowfullscreen>
+                        </iframe>
                     </div>
                 `;
                 grid.appendChild(card);
-
-                // โหลดวิดีโอเข้า Player
-                setTimeout(() => initPlayer(cam.id, streamUrl), 100);
             });
         }
 
-        function initPlayer(id, url) {
-            const video = document.getElementById(`video-${id}`);
-            if (!video) return;
-
-            if (Hls.isSupported()) {
-                const hls = new Hls({ manifestLoadingTimeOut: 8000 });
-                hls.loadSource(url);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-                hlsInstances[id] = hls;
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = url;
-                video.addEventListener('loadedmetadata', () => video.play().catch(() => {}));
-            }
-        }
-
-        // โหลดรายการกล้องครั้งแรกเมื่อเปิดหน้าเว็บ
+        // โหลดรายการกล้องเมื่อเปิดหน้าเว็บ
         renderCameras();
     </script>
 </body>
