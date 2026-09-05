@@ -49,23 +49,13 @@
                 <input type="hidden" id="camId">
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1">ชื่อกล้อง / ตำแหน่ง</label>
-                    <input type="text" id="camName" placeholder="เช่น กล้องหน้าบ้าน 1" required 
+                    <input type="text" id="camName" placeholder="เช่น กล้อง Tapo 1" required 
                         class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">ZeroTier IP</label>
-                    <input type="text" id="camServerIp" placeholder="เช่น 10.147.17.215" required 
-                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Port</label>
-                    <input type="text" id="camPort" value="1984" required 
-                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">ชื่อ Stream (`src` parameter)</label>
-                    <input type="text" id="camStreamName" placeholder="เช่น tapo_cam1 หรือ tapo_cam2" required 
-                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Stream URL (ลิงก์สตรีมของกล้อง)</label>
+                    <input type="text" id="camUrl" placeholder="10.147.17.215:1984/stream.html?src=tapo_cam1" required 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500 font-mono text-xs">
                 </div>
 
                 <div class="pt-3 flex justify-end gap-3">
@@ -80,20 +70,17 @@
     <script>
         const DELETE_PASSWORD = "admin2";
 
-        let cameras = JSON.parse(localStorage.getItem('zt_cameras')) || [
+        // กำหนดรายการกล้องเริ่มต้นด้วย URL ตรง
+        let cameras = JSON.parse(localStorage.getItem('zt_cameras_v2')) || [
             {
                 id: 1,
                 name: "กล้อง Tapo 1",
-                serverIp: "10.147.17.215",
-                port: "1984",
-                streamName: "tapo_cam1"
+                url: "10.147.17.215:1984/stream.html?src=tapo_cam1"
             },
             {
                 id: 2,
                 name: "กล้อง Tapo 2",
-                serverIp: "10.147.17.215",
-                port: "1984",
-                streamName: "tapo_cam2"
+                url: "10.147.17.215:1984/stream.html?src=tapo_cam2"
             }
         ];
 
@@ -106,8 +93,6 @@
         function openAddModal() {
             document.getElementById('cameraForm').reset();
             document.getElementById('camId').value = "";
-            document.getElementById('camPort').value = "1984";
-            document.getElementById('camServerIp').value = "10.147.17.215";
             document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-camera text-sky-400"></i> เพิ่มกล้องวงจรปิด';
             toggleModal(true);
         }
@@ -118,9 +103,7 @@
 
             document.getElementById('camId').value = cam.id;
             document.getElementById('camName').value = cam.name;
-            document.getElementById('camServerIp').value = cam.serverIp;
-            document.getElementById('camPort').value = cam.port;
-            document.getElementById('camStreamName').value = cam.streamName;
+            document.getElementById('camUrl').value = cam.url;
 
             document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-sky-400"></i> แก้ไขข้อมูลกล้อง';
             toggleModal(true);
@@ -129,12 +112,11 @@
         function saveCamera(e) {
             e.preventDefault();
             const editId = document.getElementById('camId').value;
-            
+            let inputUrl = document.getElementById('camUrl').value.trim();
+
             const camData = {
                 name: document.getElementById('camName').value,
-                serverIp: document.getElementById('camServerIp').value.trim(),
-                port: document.getElementById('camPort').value.trim(),
-                streamName: document.getElementById('camStreamName').value.trim()
+                url: inputUrl
             };
 
             if (editId) {
@@ -148,7 +130,7 @@
                 cameras.push(newCam);
             }
 
-            localStorage.setItem('zt_cameras', JSON.stringify(cameras));
+            localStorage.setItem('zt_cameras_v2', JSON.stringify(cameras));
             toggleModal(false);
             renderCameras();
         }
@@ -159,7 +141,7 @@
             
             if (password === DELETE_PASSWORD) {
                 cameras = cameras.filter(cam => cam.id !== id);
-                localStorage.setItem('zt_cameras', JSON.stringify(cameras));
+                localStorage.setItem('zt_cameras_v2', JSON.stringify(cameras));
                 renderCameras();
             } else {
                 alert("รหัสผ่านไม่ถูกต้อง! ไม่สามารถลบกล้องได้");
@@ -181,18 +163,21 @@
             }
 
             cameras.forEach(cam => {
-                // ดึงผ่าน stream.html ตามปกติโดยใช้ HTTP ชัดเจน
-                const streamUrl = `http://${cam.serverIp}:${cam.port}/stream.html?src=${cam.streamName}`;
+                // จัดการเรื่อง โปรโตคอล http:// ถ้าผู้ใช้ไม่ได้ใส่มา
+                let targetUrl = cam.url;
+                if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                    targetUrl = 'http://' + targetUrl;
+                }
 
                 const card = document.createElement('div');
                 card.className = "bg-slate-800 border border-slate-700/80 rounded-xl overflow-hidden shadow-xl flex flex-col";
                 card.innerHTML = `
                     <div class="p-3 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
-                        <div class="truncate">
+                        <div class="truncate pr-2">
                             <h2 class="font-semibold text-white text-sm truncate">${cam.name}</h2>
-                            <p class="text-xs text-slate-400 font-mono">${cam.serverIp} (${cam.streamName})</p>
+                            <p class="text-xs text-slate-400 font-mono truncate" title="${cam.url}">${cam.url}</p>
                         </div>
-                        <div class="flex items-center gap-1">
+                        <div class="flex items-center gap-1 shrink-0">
                             <button onclick="editCamera(${cam.id})" class="text-slate-400 hover:text-amber-400 p-1.5 rounded transition" title="แก้ไขกล้อง">
                                 <i class="fa-solid fa-pen-to-square"></i>
                             </button>
@@ -203,7 +188,7 @@
                     </div>
                     <div class="relative bg-black aspect-video flex items-center justify-center">
                         <iframe 
-                            src="${streamUrl}" 
+                            src="${targetUrl}" 
                             class="w-full h-full border-0" 
                             allow="autoplay; fullscreen" 
                             allowfullscreen>
