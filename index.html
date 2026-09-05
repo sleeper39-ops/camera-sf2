@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- แก้ปัญหา Mixed Content (HTTPS -> HTTP) -->
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <title>ZeroTier Camera Monitor</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -183,7 +185,6 @@
             }
 
             cameras.forEach(cam => {
-                // ปรับโหมดเป็น MSE + HLS (รองรับการทะลุผ่านเน็ตมือถือได้ดีที่สุด)
                 const streamUrl = `http://${cam.serverIp}:${cam.port}/stream.html?src=${cam.streamName}&mode=mse,webrtc,hls`;
 
                 const card = document.createElement('div');
