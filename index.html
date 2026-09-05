@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- แก้ปัญหา Mixed Content (HTTPS -> HTTP) -->
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-    <title>ZeroTier Camera Monitor</title>
+    <title>ZeroTier CCTV Dashboard</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome ไอคอน -->
@@ -82,7 +80,6 @@
     <script>
         const DELETE_PASSWORD = "admin2";
 
-        // กำหนดรายการกล้องเริ่มต้นด้วย IP ZeroTier
         let cameras = JSON.parse(localStorage.getItem('zt_cameras')) || [
             {
                 id: 1,
@@ -158,7 +155,6 @@
 
         function deleteCamera(id) {
             const password = prompt("กรุณาใส่รหัสผ่านเพื่อยืนยันการลบกล้อง:");
-            
             if (password === null) return;
             
             if (password === DELETE_PASSWORD) {
@@ -185,7 +181,8 @@
             }
 
             cameras.forEach(cam => {
-                const streamUrl = `http://${cam.serverIp}:${cam.port}/stream.html?src=${cam.streamName}&mode=mse,webrtc,hls`;
+                // ดึงผ่าน stream.html ตามปกติโดยใช้ HTTP ชัดเจน
+                const streamUrl = `http://${cam.serverIp}:${cam.port}/stream.html?src=${cam.streamName}`;
 
                 const card = document.createElement('div');
                 card.className = "bg-slate-800 border border-slate-700/80 rounded-xl overflow-hidden shadow-xl flex flex-col";
@@ -217,7 +214,6 @@
             });
         }
 
-        // โหลดรายการกล้องเมื่อเปิดหน้าเว็บ
         renderCameras();
     </script>
 </body>
