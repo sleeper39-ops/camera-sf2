@@ -9,8 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- FontAwesome ไอคอน -->
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         body {
@@ -24,866 +23,291 @@
 
     <!-- Header & Control Bar -->
     <header class="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-6">
-
         <div>
             <h1 class="text-2xl md:text-3xl font-bold text-sky-400 flex items-center gap-3">
                 <i class="fa-solid fa-video text-sky-400"></i>
                 ZeroTier CCTV Dashboard
             </h1>
-
-            <!-- Firebase Status -->
-            <p id="firebaseStatus" class="text-xs text-slate-500 mt-2">
-                <i class="fa-solid fa-spinner fa-spin"></i>
-                กำลังเชื่อมต่อ Firebase...
+            <p class="text-xs text-slate-400 mt-2">
+                <i class="fa-solid fa-bolt text-amber-400"></i> Powered by go2rtc & Cloudflare
             </p>
         </div>
 
         <button
             onclick="openAddModal()"
             class="bg-sky-500 hover:bg-sky-600 text-white px-5 py-2.5 rounded-lg flex items-center justify-center gap-2 transition font-medium shadow-lg shadow-sky-500/20">
-
             <i class="fa-solid fa-plus"></i>
             เพิ่มกล้องใหม่
-
         </button>
-
     </header>
-
 
     <!-- Camera Grid Display -->
     <main class="max-w-7xl mx-auto">
-
-        <div
-            id="cameraGrid"
-            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-            <!-- รายการกล้องจะถูกโหลดจาก Firebase -->
-
+        <div id="cameraGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- รายการกล้องจะถูกโหลดจาก LocalStorage -->
         </div>
-
     </main>
 
-
     <!-- Modal Form สำหรับเพิ่ม / แก้ไขกล้อง -->
-    <div
-        id="addModal"
-        class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-
+    <div id="addModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl">
-
             <div class="flex justify-between items-center mb-5 border-b border-slate-700 pb-3">
-
-                <h3
-                    id="modalTitle"
-                    class="text-lg font-bold text-white flex items-center gap-2">
-
+                <h3 id="modalTitle" class="text-lg font-bold text-white flex items-center gap-2">
                     <i class="fa-solid fa-camera text-sky-400"></i>
                     เพิ่มกล้องวงจรปิด
-
                 </h3>
-
-                <button
-                    onclick="toggleModal(false)"
-                    class="text-slate-400 hover:text-white">
-
+                <button onclick="toggleModal(false)" class="text-slate-400 hover:text-white">
                     <i class="fa-solid fa-xmark text-xl"></i>
-
                 </button>
-
             </div>
 
-
-            <form
-                id="cameraForm"
-                onsubmit="saveCamera(event)"
-                class="space-y-4">
-
+            <form id="cameraForm" onsubmit="saveCamera(event)" class="space-y-4">
                 <!-- ID -->
-                <input
-                    type="hidden"
-                    id="camId">
-
+                <input type="hidden" id="camId">
 
                 <!-- ชื่อกล้อง -->
                 <div>
-
                     <label class="block text-xs font-semibold text-slate-300 mb-1">
                         ชื่อกล้อง / ตำแหน่ง
                     </label>
-
                     <input
                         type="text"
                         id="camName"
-                        placeholder="เช่น กล้อง Tapo 1"
+                        placeholder="เช่น กล้องหน้าบ้าน (Tapo C200)"
                         required
                         class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
-
                 </div>
-
 
                 <!-- Stream URL -->
                 <div>
-
                     <label class="block text-xs font-semibold text-slate-300 mb-1">
-                        Stream URL (ลิงก์สตรีมของกล้อง)
+                        go2rtc Stream URL
                     </label>
-
                     <input
                         type="text"
                         id="camUrl"
-                        placeholder="10.x.x.x:1984/stream.html?src=..."
+                        placeholder="https://cctv.yourdomain.com/stream.html?src=camera1"
                         required
                         class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500 font-mono text-xs">
-
+                    <p class="text-[10px] text-slate-400 mt-1">
+                        * ใส่ URL หน้า Stream จาก go2rtc (เช่น WebRTC / MSE / MSE-H265 / stream.html)
+                    </p>
                 </div>
-
 
                 <!-- Buttons -->
                 <div class="pt-3 flex justify-end gap-3">
-
                     <button
                         type="button"
                         onclick="toggleModal(false)"
                         class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white">
-
                         ยกเลิก
-
                     </button>
-
                     <button
                         id="saveButton"
                         type="submit"
                         class="bg-sky-500 hover:bg-sky-600 text-white px-5 py-2 rounded-lg text-sm font-medium transition">
-
                         บันทึกกล้อง
-
                     </button>
-
                 </div>
-
             </form>
-
         </div>
-
     </div>
 
+    <script>
+        // Key สำหรับเก็บข้อมูลใน LocalStorage
+        const STORAGE_KEY = 'go2rtc_cameras_db';
 
-    <!-- ========================================================= -->
-    <!-- Firebase -->
-    <!-- ========================================================= -->
-
-    <script type="module">
-
-        import {
-            initializeApp
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-
-        import {
-            getFirestore,
-            collection,
-            addDoc,
-            getDocs,
-            updateDoc,
-            deleteDoc,
-            doc,
-            query,
-            orderBy,
-            serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-
-        // =========================================================
-        // Firebase Configuration
-        // =========================================================
-
-        const firebaseConfig = {
-
-            apiKey: "AIzaSyB0pvA-hcYCsV_dfJYlBtQ4XgdMrKP6lTU",
-
-            authDomain: "camera-sf2.firebaseapp.com",
-
-            projectId: "camera-sf2",
-
-            storageBucket: "camera-sf2.firebasestorage.app",
-
-            messagingSenderId: "165400713636",
-
-            appId: "1:165400713636:web:47e3dfe15a60e870df8931",
-
-            measurementId: "G-Q6GPMSJV6G"
-
-        };
-
-
-        // =========================================================
-        // Initialize Firebase
-        // =========================================================
-
-        const app = initializeApp(firebaseConfig);
-
-        const db = getFirestore(app);
-
-
-        // =========================================================
-        // Firestore Collection
-        // =========================================================
-
-        const camerasCollection =
-            collection(db, "cameras");
-
-
-        // =========================================================
-        // Password สำหรับลบ
-        // =========================================================
-
-        const DELETE_PASSWORD = "admin2";
-
-
-        // =========================================================
-        // ตัวแปรเก็บข้อมูลกล้อง
-        //
-        // ไม่มีข้อมูลกล้องเริ่มต้น
-        // =========================================================
-
-        let cameras = [];
-
-
-        // =========================================================
-        // Firebase Status
-        // =========================================================
-
-        function setFirebaseStatus(text, color) {
-
-            const status =
-                document.getElementById("firebaseStatus");
-
-            status.className =
-                `text-xs mt-2 ${color}`;
-
-            status.innerHTML = text;
-
+        // โหลดข้อมูลกล้องจาก LocalStorage
+        function getStoredCameras() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
         }
 
-
-        // =========================================================
-        // Load Cameras
-        // =========================================================
-
-        async function loadCameras() {
-
-            try {
-
-                setFirebaseStatus(
-                    '<i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดข้อมูลกล้อง...',
-                    "text-amber-400"
-                );
-
-
-                /*
-                 * อ่านข้อมูลจาก
-                 *
-                 * Firestore
-                 * └── cameras
-                 */
-
-                const q = query(
-                    camerasCollection,
-                    orderBy("createdAt", "asc")
-                );
-
-
-                const snapshot =
-                    await getDocs(q);
-
-
-                cameras = [];
-
-
-                snapshot.forEach((item) => {
-
-                    cameras.push({
-
-                        id: item.id,
-
-                        ...item.data()
-
-                    });
-
-                });
-
-
-                renderCameras();
-
-
-                setFirebaseStatus(
-                    '<i class="fa-solid fa-circle-check"></i> Firebase เชื่อมต่อแล้ว',
-                    "text-emerald-400"
-                );
-
-
-            } catch (error) {
-
-                console.error(
-                    "Firebase Load Error:",
-                    error
-                );
-
-
-                setFirebaseStatus(
-                    '<i class="fa-solid fa-circle-xmark"></i> Firebase เชื่อมต่อไม่สำเร็จ',
-                    "text-rose-400"
-                );
-
-
-                document.getElementById("cameraGrid").innerHTML = `
-
-                    <div class="col-span-full text-center py-16 border-2 border-dashed border-rose-900 rounded-xl text-rose-400">
-
-                        <i class="fa-solid fa-triangle-exclamation text-4xl mb-3"></i>
-
-                        <p class="font-semibold">
-                            ไม่สามารถโหลดข้อมูลจาก Firebase
-                        </p>
-
-                        <p class="text-xs text-slate-500 mt-2">
-                            กรุณาตรวจสอบ Firestore Database และ Rules
-                        </p>
-
-                    </div>
-
-                `;
-
-            }
-
+        // บันทึกข้อมูลลง LocalStorage
+        function saveStoredCameras(cameras) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(cameras));
         }
 
-
-        // =========================================================
-        // Modal
-        // =========================================================
-
-        window.toggleModal = function(show) {
-
-            const modal =
-                document.getElementById("addModal");
-
-
+        // Toggle Modal Display
+        function toggleModal(show) {
+            const modal = document.getElementById("addModal");
             if (show) {
-
                 modal.classList.remove("hidden");
-
             } else {
-
                 modal.classList.add("hidden");
-
             }
+        }
 
-        };
-
-
-        // =========================================================
-        // เปิดหน้าต่างเพิ่มกล้อง
-        // =========================================================
-
-        window.openAddModal = function() {
-
-            document
-                .getElementById("cameraForm")
-                .reset();
-
-
-            document
-                .getElementById("camId")
-                .value = "";
-
-
-            document
-                .getElementById("modalTitle")
-                .innerHTML = `
-
-                    <i class="fa-solid fa-camera text-sky-400"></i>
-                    เพิ่มกล้องวงจรปิด
-
-                `;
-
-
-            document
-                .getElementById("saveButton")
-                .innerText = "บันทึกกล้อง";
-
-
+        // เปิด Modal เพิ่มกล้อง
+        function openAddModal() {
+            document.getElementById("cameraForm").reset();
+            document.getElementById("camId").value = "";
+            document.getElementById("modalTitle").innerHTML = `
+                <i class="fa-solid fa-camera text-sky-400"></i> เพิ่มกล้องวงจรปิด
+            `;
+            document.getElementById("saveButton").innerText = "บันทึกกล้อง";
             toggleModal(true);
+        }
 
-        };
-
-
-        // =========================================================
-        // แก้ไขกล้อง
-        // =========================================================
-
-        window.editCamera = function(id) {
-
-            const cam =
-                cameras.find(c => c.id === id);
-
-
+        // เปิด Modal แก้ไขกล้อง
+        function editCamera(id) {
+            const cameras = getStoredCameras();
+            const cam = cameras.find(c => c.id === id);
             if (!cam) return;
 
+            document.getElementById("camId").value = cam.id;
+            document.getElementById("camName").value = cam.name || "";
+            document.getElementById("camUrl").value = cam.url || "";
 
-            document
-                .getElementById("camId")
-                .value = cam.id;
-
-
-            document
-                .getElementById("camName")
-                .value = cam.name || "";
-
-
-            document
-                .getElementById("camUrl")
-                .value = cam.url || "";
-
-
-            document
-                .getElementById("modalTitle")
-                .innerHTML = `
-
-                    <i class="fa-solid fa-pen-to-square text-sky-400"></i>
-                    แก้ไขข้อมูลกล้อง
-
-                `;
-
-
-            document
-                .getElementById("saveButton")
-                .innerText =
-                "บันทึกการแก้ไข";
-
+            document.getElementById("modalTitle").innerHTML = `
+                <i class="fa-solid fa-pen-to-square text-sky-400"></i> แก้ไขข้อมูลกล้อง
+            `;
+            document.getElementById("saveButton").innerText = "บันทึกการแก้ไข";
 
             toggleModal(true);
+        }
 
-        };
-
-
-        // =========================================================
-        // เพิ่ม / แก้ไขกล้อง
-        // =========================================================
-
-        window.saveCamera = async function(e) {
-
+        // เพิ่ม / แก้ไขข้อมูลกล้อง
+        function saveCamera(e) {
             e.preventDefault();
 
-
-            const editId =
-                document.getElementById("camId").value;
-
-
-            const name =
-                document.getElementById("camName").value.trim();
-
-
-            const url =
-                document.getElementById("camUrl").value.trim();
-
+            const editId = document.getElementById("camId").value;
+            const name = document.getElementById("camName").value.trim();
+            const url = document.getElementById("camUrl").value.trim();
 
             if (!name || !url) {
-
-                alert("กรุณากรอกข้อมูลให้ครบ");
-
+                alert("กรุณากรอกข้อมูลให้ครบถ้วน");
                 return;
-
             }
 
+            let cameras = getStoredCameras();
 
-            const saveButton =
-                document.getElementById("saveButton");
-
-
-            saveButton.disabled = true;
-
-
-            saveButton.innerHTML =
-                '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
-
-
-            try {
-
-
-                // =================================================
-                // แก้ไขข้อมูลเดิม
-                // =================================================
-
-                if (editId) {
-
-                    const cameraRef =
-                        doc(
-                            db,
-                            "cameras",
-                            editId
-                        );
-
-
-                    await updateDoc(
-
-                        cameraRef,
-
-                        {
-
-                            name: name,
-
-                            url: url,
-
-                            updatedAt:
-                                serverTimestamp()
-
-                        }
-
-                    );
-
-                }
-
-
-                // =================================================
-                // เพิ่มกล้องใหม่
-                // =================================================
-
-                else {
-
-                    await addDoc(
-
-                        camerasCollection,
-
-                        {
-
-                            name: name,
-
-                            url: url,
-
-                            createdAt:
-                                serverTimestamp(),
-
-                            updatedAt:
-                                serverTimestamp()
-
-                        }
-
-                    );
-
-                }
-
-
-                // ปิดหน้าต่าง
-                toggleModal(false);
-
-
-                // โหลดข้อมูลใหม่จาก Firebase
-                await loadCameras();
-
-
-            } catch (error) {
-
-                console.error(
-                    "Firebase Save Error:",
-                    error
-                );
-
-
-                alert(
-                    "ไม่สามารถบันทึกข้อมูลได้\n\n" +
-                    error.message
-                );
-
-            } finally {
-
-                saveButton.disabled = false;
-
-
-                saveButton.innerText =
-                    editId
-                        ? "บันทึกการแก้ไข"
-                        : "บันทึกกล้อง";
-
+            if (editId) {
+                // แก้ไขรายการเดิม
+                cameras = cameras.map(cam => {
+                    if (cam.id === editId) {
+                        return { ...cam, name, url, updatedAt: new Date().toISOString() };
+                    }
+                    return cam;
+                });
+            } else {
+                // เพิ่มรายการใหม่
+                const newCamera = {
+                    id: 'cam_' + Date.now(),
+                    name,
+                    url,
+                    createdAt: new Date().toISOString()
+                };
+                cameras.push(newCamera);
             }
 
-        };
+            saveStoredCameras(cameras);
+            toggleModal(false);
+            renderCameras();
+        }
 
-
-        // =========================================================
         // ลบกล้อง
-        // =========================================================
-
-        window.deleteCamera = async function(id) {
-
-            const password =
-                prompt(
-                    "กรุณาใส่รหัสผ่านเพื่อยืนยันการลบกล้อง:"
-                );
-
-
-            if (password === null) {
-
+        function deleteCamera(id) {
+            if (!confirm("คุณต้องการลบกล้องตัวนี้ใช่หรือไม่?")) {
                 return;
-
             }
 
+            let cameras = getStoredCameras();
+            cameras = cameras.filter(c => c.id !== id);
+            saveStoredCameras(cameras);
+            renderCameras();
+        }
 
-            if (password !== DELETE_PASSWORD) {
-
-                alert(
-                    "รหัสผ่านไม่ถูกต้อง! ไม่สามารถลบกล้องได้"
-                );
-
-                return;
-
-            }
-
-
-            const confirmDelete =
-                confirm(
-                    "ยืนยันการลบกล้องตัวนี้?"
-                );
-
-
-            if (!confirmDelete) {
-
-                return;
-
-            }
-
-
-            try {
-
-                await deleteDoc(
-
-                    doc(
-                        db,
-                        "cameras",
-                        id
-                    )
-
-                );
-
-
-                await loadCameras();
-
-
-            } catch (error) {
-
-                console.error(
-                    "Firebase Delete Error:",
-                    error
-                );
-
-
-                alert(
-                    "ไม่สามารถลบกล้องได้\n\n" +
-                    error.message
-                );
-
-            }
-
-        };
-
-
-        // =========================================================
-        // แสดงรายการกล้อง
-        // =========================================================
-
+        // แสดงผลรายการกล้อง
         function renderCameras() {
-
-            const grid =
-                document.getElementById("cameraGrid");
-
+            const grid = document.getElementById("cameraGrid");
+            const cameras = getStoredCameras();
 
             grid.innerHTML = "";
 
-
-            // =====================================================
-            // ยังไม่มีกล้อง
-            // =====================================================
-
             if (cameras.length === 0) {
-
                 grid.innerHTML = `
-
                     <div class="col-span-full text-center py-16 border-2 border-dashed border-slate-800 rounded-xl text-slate-500">
-
                         <i class="fa-solid fa-video-slash text-4xl mb-3"></i>
-
-                        <p>
-                            ยังไม่มีรายการกล้อง
-                            กดปุ่ม "เพิ่มกล้องใหม่"
-                            เพื่อเริ่มตั้งค่า
-                        </p>
-
+                        <p>ยังไม่มีรายการกล้อง</p>
+                        <p class="text-xs text-slate-600 mt-1">กดปุ่ม "เพิ่มกล้องใหม่" เพื่อเชื่อมต่อกับ go2rtc</p>
                     </div>
-
                 `;
-
                 return;
-
             }
 
-
-            // =====================================================
-            // แสดงกล้อง
-            // =====================================================
-
             cameras.forEach(cam => {
-
-
-                // -------------------------------------------------
-                // URL
-                // -------------------------------------------------
-
                 let targetUrl = cam.url;
 
-
-                if (
-                    !targetUrl.startsWith("http://") &&
-                    !targetUrl.startsWith("https://")
-                ) {
-
-                    targetUrl =
-                        "http://" + targetUrl;
-
+                // จัดการเรื่อง Protocol อัตโนมัติรองรับ Cloudflare HTTPS
+                if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+                    targetUrl = (window.location.protocol === 'https:' ? 'https://' : 'http://') + targetUrl;
                 }
 
-
-                // -------------------------------------------------
-                // Card
-                // -------------------------------------------------
-
-                const card =
-                    document.createElement("div");
-
-
-                card.className =
-                    "bg-slate-800 border border-slate-700/80 rounded-xl overflow-hidden shadow-xl flex flex-col";
-
+                const card = document.createElement("div");
+                card.className = "bg-slate-800 border border-slate-700/80 rounded-xl overflow-hidden shadow-xl flex flex-col";
 
                 card.innerHTML = `
-
                     <!-- Camera Header -->
-
                     <div class="p-3 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
-
                         <div class="truncate pr-2">
-
                             <h2 class="font-semibold text-white text-sm truncate">
-
                                 ${escapeHtml(cam.name)}
-
                             </h2>
-
-                            <p
-                                class="text-xs text-slate-400 font-mono truncate"
-                                title="${escapeHtml(cam.url)}">
-
+                            <p class="text-xs text-slate-400 font-mono truncate" title="${escapeHtml(cam.url)}">
                                 ${escapeHtml(cam.url)}
-
                             </p>
-
                         </div>
 
-
                         <!-- Buttons -->
-
                         <div class="flex items-center gap-1 shrink-0">
-
-                            <!-- Edit -->
-
                             <button
                                 onclick="editCamera('${cam.id}')"
                                 class="text-slate-400 hover:text-amber-400 p-1.5 rounded transition"
                                 title="แก้ไขกล้อง">
-
                                 <i class="fa-solid fa-pen-to-square"></i>
-
                             </button>
-
-
-                            <!-- Delete -->
 
                             <button
                                 onclick="deleteCamera('${cam.id}')"
                                 class="text-slate-400 hover:text-rose-400 p-1.5 rounded transition"
                                 title="ลบกล้อง">
-
                                 <i class="fa-solid fa-trash-can"></i>
-
                             </button>
-
                         </div>
-
                     </div>
-
 
                     <!-- Camera Stream -->
-
                     <div class="relative bg-black aspect-video flex items-center justify-center">
-
                         <iframe
-
                             src="${escapeAttribute(targetUrl)}"
-
                             class="w-full h-full border-0"
-
                             allow="autoplay; fullscreen"
-
                             allowfullscreen>
-
                         </iframe>
-
                     </div>
-
                 `;
 
-
                 grid.appendChild(card);
-
             });
-
         }
 
-
-        // =========================================================
-        // ป้องกัน HTML Injection
-        // =========================================================
-
+        // ป้องกัน XSS
         function escapeHtml(value) {
-
             return String(value)
-
                 .replaceAll("&", "&amp;")
-
                 .replaceAll("<", "&lt;")
-
                 .replaceAll(">", "&gt;")
-
                 .replaceAll('"', "&quot;")
-
                 .replaceAll("'", "&#039;");
-
         }
-
 
         function escapeAttribute(value) {
-
             return escapeHtml(value);
-
         }
 
-
-        // =========================================================
-        // เริ่มต้นระบบ
-        // =========================================================
-
-        loadCameras();
-
+        // เริ่มทำงานเมื่อโหลดหน้าเว็บ
+        document.addEventListener("DOMContentLoaded", renderCameras);
     </script>
-
 </body>
 </html>
