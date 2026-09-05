@@ -183,8 +183,8 @@
             }
 
             cameras.forEach(cam => {
-                // เปลี่ยนรูปแบบการดึงภาพเป็น WebRTC Player ผ่าน stream.html ของ go2rtc
-                const streamUrl = `http://${cam.serverIp}:${cam.port}/stream.html?src=${cam.streamName}&mode=webrtc`;
+                // ปรับโหมดเป็น MSE + HLS (รองรับการทะลุผ่านเน็ตมือถือได้ดีที่สุด)
+                const streamUrl = `http://${cam.serverIp}:${cam.port}/stream.html?src=${cam.streamName}&mode=mse,webrtc,hls`;
 
                 const card = document.createElement('div');
                 card.className = "bg-slate-800 border border-slate-700/80 rounded-xl overflow-hidden shadow-xl flex flex-col";
